@@ -332,6 +332,8 @@ Here are solutions to common issues you might encounter:
 
 - **Supabase Service Unavailable** - Make sure you don't have an "@" character in your Postgres password! If the connection to the kong container is working (the container logs say it is receiving requests from n8n) but n8n says it cannot connect, this is generally the problem from what the community has shared. Other characters might not be allowed too, the @ symbol is just the one I know for sure!
 
+- **Files not Found in Supabase Folder** - If you get any errors around files missing in the supabase/ folder like .env, docker/docker-compose.yml, etc. this most likely means you had a "bad" pull of the Supabase GitHub repository when you ran the start_services.py script. Delete the supabase/ folder within the Local AI Package folder entirely and try again.
+
 ### GPU Support Issues
 
 - **Windows GPU Support**: If you're having trouble running Ollama with GPU support on Windows with Docker Desktop:
