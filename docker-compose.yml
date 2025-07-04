@@ -1,0 +1,34 @@
+version: '3.8'
+
+services:
+  # Our Semantic Code Agent service
+  agent-semantic-code:
+    build: .
+    container_name: agent-semantic-code
+    ports:
+      - '8000:8000' # Map host port 8000 to container port 8000
+    volumes:
+      # Mount local directories for data persistence
+      - ./data:/app/data
+      - ./repos:/app/repos
+      - ./vector_db:/app/vector_db
+    # Pass environment variables from the .env file on the host
+    env_file:
+      - .env
+    # Ensure Qdrant is started before our agent
+    depends_on:
+      - qdrant
+    restart: unless-stopped
+
+  # The Qdrant Vector Database service
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: qdrant
+    ports:
+      - '6333:6333'
+      - '6334:6334'
+    volumes:
+      - ./qdrant_storage:/qdrant/storage
+    # Rationale: Critical optimization for M1/M2/M3 Macs to ensure native performance.
+    platform: linux/arm64
+    restart: unless-stopped
