@@ -72,19 +72,40 @@ class LocalVectorStore:
             self.client = QdrantClient(":memory:")
         
         try:
-            self.client.get_collection(collection_name=self.collection_name)
+            collection_info = self.client.get_collection(collection_name=self.collection_name)
             print(f"Using existing Qdrant collection: {self.collection_name}")
+            
+            # Check if existing collection has correct dimensions
+            existing_dimension = collection_info.config.params.vectors.size
+            test_embedding = self.embed_query("test")
+            required_dimension = len(test_embedding)
+            
+            if existing_dimension != required_dimension:
+                print(f"⚠️  Dimension mismatch detected!")
+                print(f"   Existing collection: {existing_dimension} dimensions")
+                print(f"   Current model: {required_dimension} dimensions")
+                print(f"   Recreating collection with correct dimensions...")
+                
+                # Delete and recreate collection with correct dimensions
+                self.client.delete_collection(collection_name=self.collection_name)
+                self._create_qdrant_collection(required_dimension)
         except Exception:
+            # Collection doesn't exist, create it with dynamic dimensions
             print(f"Creating new Qdrant collection: {self.collection_name}")
-            # Rationale: nomic-embed-text model uses 768 dimensions
-            embedding_dimension = 768
-            self.client.create_collection(
-                collection_name=self.collection_name,
-                vectors_config=models.VectorParams(
-                    size=embedding_dimension,
-                    distance=models.Distance.COSINE
-                )
+            test_embedding = self.embed_query("test")
+            embedding_dimension = len(test_embedding)
+            print(f"Detected embedding dimension: {embedding_dimension}")
+            self._create_qdrant_collection(embedding_dimension)
+    
+    def _create_qdrant_collection(self, dimension: int):
+        """Create a new Qdrant collection with the specified dimension"""
+        self.client.create_collection(
+            collection_name=self.collection_name,
+            vectors_config=models.VectorParams(
+                size=dimension,
+                distance=models.Distance.COSINE
             )
+        )
     
     def _init_chroma(self):
         """Initialize ChromaDB vector store"""
@@ -99,8 +120,10 @@ class LocalVectorStore:
         """Initialize LanceDB vector store"""
         db = lancedb.connect(str(self.config.VECTOR_DB_DIR))
         
-        # Rationale: nomic-embed-text model uses 768 dimensions
-        embedding_dimension = 768
+        # Get dynamic embedding dimension
+        test_embedding = self.embed_query("test")
+        embedding_dimension = len(test_embedding)
+        print(f"Detected embedding dimension: {embedding_dimension}")
         
         class LanceSchema(LanceModel):
             vector: Vector(embedding_dimension)
